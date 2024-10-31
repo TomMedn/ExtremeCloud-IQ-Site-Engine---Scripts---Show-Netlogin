@@ -1,0 +1,49 @@
+import os
+import csv
+def create_output_path_csv():
+    """
+    Retourne un chemin de fichier relatif à $XMC_HOME/appdata/logs/scripting/$USER_NAME.
+    Le fichier porte le nom de l'IP de l'appareil.
+    """
+    output_path = os.path.join(
+        "/usr/local/Extreme_Networks/NetSight/appdata/logs/scripting/result_scripts/NACCED",
+        emc_vars["deviceIP"].replace(' ', '_') + "_netlogin.csv"
+    )
+    return output_path
+def is_supported_device():
+    """Check if the device type or firmware is supported for 'show netlogin'."""
+    supported_devices = ["X440-G2", "X450-G2", "X460-G2"]  # Add other supported models
+    device_type = emc_vars.get("deviceType", "")
+    if any(device in device_type for device in supported_devices):
+        return True
+    else:
+        print("Device type '{}' not supported for 'show netlogin' command.".format(device_type))
+        return False
+def show_netlogin():
+    # Vérifier si le périphérique est pris en charge
+    if not is_supported_device():
+        return
+    try:
+        # Exécute la commande 'show netlogin' et récupère les résultats
+        cli_results = emc_cli.send("show netlogin")
+        # Vérifier si la commande a réussi
+        if cli_results.isSuccess():
+            netlogin_output = cli_results.getOutput().splitlines()
+            # Préparation des données pour le CSV
+            output_data = []
+            for line in netlogin_output:
+                output_data.append([emc_vars["deviceName"], line])
+            # Chemin du fichier CSV de sortie
+            output_path_CSV = create_output_path_csv()
+            # Écriture des résultats dans le fichier CSV
+            with open(output_path_CSV, 'w') as f:  # Removed 'newline=' argument
+                writer = csv.writer(f, delimiter=";")
+                writer.writerow(["DeviceName", "Netlogin Output"])
+                writer.writerows(output_data)
+            print("Les résultats de 'show netlogin' ont été enregistrés dans {}".format(output_path_CSV))
+        else:
+            print("Erreur lors de l'exécution de la commande : {}".format(cli_results.getError()))
+    except Exception as e:
+        print("Une erreur est survenue lors de l'exécution de 'show netlogin' : {}".format(e))
+# Appeler la fonction
+show_netlogin()
